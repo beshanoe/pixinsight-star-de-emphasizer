@@ -38,7 +38,7 @@ export function ImagePreviewSelect({
     const bmp = image?.render().scaledTo(sw, sh);
     return [
       bmp,
-      Math.min(image?.width, image?.height),
+      Math.min(image?.width, image?.height) / 1.5,
       bmp?.width / image?.width,
       bmp?.height / image?.height,
       size.w / 2 - bmp?.width / 2,
@@ -50,7 +50,7 @@ export function ImagePreviewSelect({
     if (!image) {
       return;
     }
-    const newRect = new Rect(defaultRectSize, defaultRectSize);
+    const newRect = new Rect(defaultRectSize * 1.5, defaultRectSize);
     newRect.moveTo(
       (image.width - newRect.width) / 2,
       (image.height - newRect.height) / 2
@@ -65,7 +65,7 @@ export function ImagePreviewSelect({
     }
     const oldCenter = new Point(rect.center);
     const newRect = new Rect(rect);
-    newRect.resizeTo(defaultRectSize / zoom, defaultRectSize / zoom);
+    newRect.resizeTo((defaultRectSize * 1.5) / zoom, defaultRectSize / zoom);
     newRect.width = Math.round(newRect.width);
     newRect.height = Math.round(newRect.height);
     newRect.center = oldCenter;
@@ -165,12 +165,7 @@ export function ImagePreviewSelect({
   }
 
   return (
-    <UIFrame
-      frameStyle={FrameStyle_Box}
-      minWidth={300}
-      minHeight={300}
-      {...props}
-    >
+    <UIFrame frameStyle={FrameStyle_Box} {...props}>
       <UIVerticalSizer>
         {image ? (
           <UIControl

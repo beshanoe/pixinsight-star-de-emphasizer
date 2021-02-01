@@ -4,8 +4,11 @@ const path = require("path");
 const webpack = require("webpack");
 const { ConcatSource } = require("webpack-sources");
 const ZipPlugin = require("zip-webpack-plugin");
+const { createHash } = require("crypto");
 
 const packageJson = require("./package.json");
+
+const zipFilename = "StarDe-emphasizer.zip";
 
 module.exports = ({ zip }) => {
   return {
@@ -67,11 +70,7 @@ module.exports = ({ zip }) => {
                   const asset = compilation.assets["script.js"];
                   if (asset) {
                     const bundleSource = asset.source();
-                    const {
-                      name,
-                      version,
-                      pixinsight: { script } = {},
-                    } = packageJson;
+                    const { name, pixinsight: { script } = {} } = packageJson;
 
                     const newSource = [
                       `#feature-id ${script["feature-id"] || name}`,
@@ -86,13 +85,33 @@ module.exports = ({ zip }) => {
                   return Promise.resolve();
                 }
               );
+
+              compilation.hooks.processAssets.tapPromise(
+                {
+                  name: "FileListPlugin",
+                  stage: webpack.Compilation.PROCESS_ASSETS_STAGE_ANALYSE,
+                },
+                () => {
+                  const asset = compilation.assets[zipFilename];
+                  if (asset) {
+                    const zipSource = asset.source();
+
+                    const hash = createHash("sha1")
+                      .update(zipSource)
+                      .digest("hex");
+
+                    compilation.emitAsset(hash, new ConcatSource());
+                  }
+                  return Promise.resolve();
+                }
+              );
             }
           );
         }
       })(),
       zip &&
         new ZipPlugin({
-          filename: "StarDe-emphasizer.zip",
+          filename: zipFilename,
           pathPrefix: "src/scripts/AstroSwell/StarDe-emphasizer",
         }),
     ].filter(Boolean),

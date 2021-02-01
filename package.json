@@ -11,7 +11,7 @@
   },
   "pixinsight": {
     "script": {
-      "feature-id": "AstroSwell > Star De-emphasizer",
+      "feature-id": "__Star De-emphasizer",
       "feature-info": "Star De-emphasizer script"
     }
   },

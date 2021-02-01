@@ -23,7 +23,7 @@ import {
 } from "@pixinsight/ui";
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { version } from "../package.json";
-import { ImagePreview } from "./ImagePreview";
+import { ImagePreview, ReadoutData } from "./ImagePreview";
 import { ImagePreviewSelect } from "./ImagePreviewSelect";
 import { NumericControl } from "./NumericControl";
 import { binarize } from "./process/binarize";
@@ -45,6 +45,29 @@ export const defaultParameters = {
 
 type Parameters = typeof defaultParameters;
 
+type Step =
+  | "original"
+  | "starless"
+  | "luminance"
+  | "structures"
+  | "binarized"
+  | "dilated"
+  | "convoluted"
+  | "halos"
+  | "result";
+
+const stepMap: Record<Step, Step> = {
+  original: "starless",
+  starless: "original",
+  luminance: "original",
+  structures: "luminance",
+  binarized: "structures",
+  dilated: "binarized",
+  convoluted: "dilated",
+  halos: "convoluted",
+  result: "original",
+};
+
 export function ScriptDialog({
   parameters: storedParameters,
   onParameterChange,
@@ -60,19 +83,15 @@ export function ScriptDialog({
   const [starlessView, setStarlessView] = useState<View | null>(null);
   const [targetView, setTargetView] = useState<View | null>(null);
   const [rect, setRect] = useState<Rect>(new Rect());
+  const [readout, setReadout] = useState("");
 
-  const [previewImage, setPreviewImage] = useState<Image>();
-  const [previewStarlessImage, setPreviewStarlessImage] = useState<Image>();
+  const [previewImages, setPreviewImages] = useState(
+    {} as { [key in Step]?: Image }
+  );
 
-  const [previewLumImage, setPreviewLumImage] = useState<Image>();
-  const [previewStructImage, setPreviewStructImage] = useState<Image>();
-  const [previewBinImage, setPreviewBinImage] = useState<Image>();
-  const [previewDilatedImage, setPreviewDilatedImage] = useState<Image>();
-  const [previewConvolutedImage, setPreviewConvolutedImage] = useState<Image>();
-  const [previewHalosImage, setPreviewHalosImage] = useState<Image>();
-  const [previewFinalImage, setPreviewFinalImage] = useState<Image>();
+  const [currentStep, setCurrentStep] = useState<Step>("original");
+  const [previousStep, setPreviousStep] = useState<Step>("original");
 
-  const [showOriginal, setShowOriginal] = useState(false);
   const [isEnabledControls, setIsEnabledControls] = useState(true);
 
   const [parameters, setParameters] = useState({
@@ -82,23 +101,34 @@ export function ScriptDialog({
 
   const targetImage = useMemo(() => targetView?.image, [targetView]);
   const starlessImage = useMemo(() => starlessView?.image, [starlessView]);
+  const currentImage = useMemo(() => previewImages[currentStep], [
+    currentStep,
+    previewImages,
+  ]);
 
   useEffect(() => {
+    let original = previewImages.original;
     if (targetImage) {
       const previewImage = new Image();
       previewImage.assign(targetImage);
       previewImage.cropTo(rect);
-      setPreviewImage(previewImage);
+      original = previewImage;
+      setPreviewImages({
+        original,
+        starless: previewImages.starless,
+      });
+      setCurrentStep("original");
     }
 
     if (starlessImage) {
       const previewStarlessImage = new Image();
       previewStarlessImage.assign(starlessImage);
       previewStarlessImage.cropTo(rect);
-      setPreviewStarlessImage(previewStarlessImage);
+      setPreviewImages({
+        original,
+        starless: previewStarlessImage,
+      });
     }
-
-    setPreviewFinalImage(undefined);
   }, [rect, targetImage, starlessImage]);
 
   function updateStructuresSettings(updatedParameters: Partial<Parameters>) {
@@ -157,7 +187,7 @@ export function ScriptDialog({
   }
 
   function onProcessPreviewClick() {
-    if (!previewImage || !previewStarlessImage) {
+    if (!previewImages.original || !previewImages.starless) {
       return;
     }
 
@@ -172,15 +202,21 @@ export function ScriptDialog({
         convolutedImage,
         halosImage,
         finalImage,
-      } = process(previewImage, previewStarlessImage);
+      } = process(previewImages.original, previewImages.starless);
 
-      setPreviewLumImage(lumImage);
-      setPreviewStructImage(structuresImage);
-      setPreviewBinImage(binarizedImage);
-      setPreviewDilatedImage(dilatedImage);
-      setPreviewConvolutedImage(convolutedImage);
-      setPreviewHalosImage(halosImage);
-      setPreviewFinalImage(finalImage);
+      setPreviewImages({
+        ...previewImages,
+        luminance: lumImage,
+        structures: structuresImage,
+        binarized: binarizedImage,
+        dilated: dilatedImage,
+        convoluted: convolutedImage,
+        halos: halosImage,
+        result: finalImage,
+      });
+      if (currentStep === "original" || currentStep === "starless") {
+        setCurrentStep("result");
+      }
     } catch (error) {
       console.error(error);
     }
@@ -222,182 +258,278 @@ export function ScriptDialog({
     dialog.newInstance();
   }
 
+  function onMainViewMousePress() {
+    const newStep = stepMap[currentStep];
+    setPreviousStep(currentStep);
+    setCurrentStep(newStep);
+  }
+
+  function onMainViewMouseRelease() {
+    setCurrentStep(previousStep);
+  }
+
+  function onMainViewReadout([x, y, count, c0, c1, c2]: ReadoutData) {
+    let readout = `X: ${x} Y: ${y}`;
+    if (count === 1 && c0 != null) {
+      readout += ` K: ${c0.toFixed(4)}`;
+    } else {
+      readout += ` R: ${c0.toFixed(4)} G: ${c1.toFixed(4)} B: ${c2.toFixed(4)}`;
+    }
+    setReadout(readout);
+  }
+
   return (
     <UIVerticalSizer>
-      <UIHorizontalSizer stretchFactor={50}>
-        <UIControl minWidth={300}>
-          <UIVerticalSizer margin={5} spacing={5}>
-            <UILabel
-              text={SCRIPT_DESCRIPTION}
-              frameStyle={FrameStyle_Box}
-              minHeight={50}
-              wordWrapping={true}
-              useRichText={true}
-              stretchFactor={0}
-            />
-
-            <UIHorizontalSizer>
-              <UILabel
-                text="Target view: "
-                textAlignment={TextAlign_VertCenter}
-                minWidth={80}
-              />
-              <UIViewList
-                onViewSelected={(view: View) => {
-                  setTargetView(view.isNull ? null : view);
-                }}
-                stretchFactor={1}
-              />
-            </UIHorizontalSizer>
-
-            <UIHorizontalSizer>
-              <UILabel
-                text="Starless view: "
-                textAlignment={TextAlign_VertCenter}
-                minWidth={80}
-              />
-              <UIViewList
-                onViewSelected={(view: View) =>
-                  setStarlessView(view.isNull ? null : view)
-                }
-                enabled={Boolean(targetView && !targetView.isNull)}
-                stretchFactor={1}
-              />
-            </UIHorizontalSizer>
-
-            <UIGroupBox title="Structures" spacing={5} margin={5}>
-              <UIHorizontalSizer>
-                <UILabel
-                  minWidth={60}
-                  text="Min layer:"
-                  textAlignment={TextAlign_VertCenter}
-                />
-                <UISpinBox
-                  minWidth={70}
-                  minValue={1}
-                  maxValue={10}
-                  value={parameters.structuresMinLayer}
-                  onValueUpdated={(structuresMinLayer) =>
-                    updateStructuresSettings({
-                      structuresMinLayer,
-                    })
-                  }
-                />
-                <UIStretch />
-              </UIHorizontalSizer>
-              <UIHorizontalSizer>
-                <UILabel
-                  minWidth={60}
-                  text="Max layer:"
-                  textAlignment={TextAlign_VertCenter}
-                />
-                <UISpinBox
-                  minWidth={70}
-                  maxValue={10}
-                  value={parameters.structuresMaxLayer}
-                  minValue={parameters.structuresMinLayer}
-                  onValueUpdated={(structuresMaxLayer) =>
-                    updateStructuresSettings({
-                      structuresMaxLayer,
-                    })
-                  }
-                />
-                <UIStretch />
-              </UIHorizontalSizer>
-            </UIGroupBox>
-
-            <UIGroupBox title="Binarization" spacing={5} margin={5}>
-              <UIHorizontalSizer spacing={5}>
-                <UILabel text="Threshold: " textAlignment={TextAlign_Center} />
-                <NumericControl
-                  value={parameters.binarizeThreshold}
-                  onValueUpdated={(binarizeThreshold) => {
-                    setParameters({ ...parameters, binarizeThreshold });
-                    onParameterChange?.("binarizeThreshold", binarizeThreshold);
-                  }}
-                  minValue={0}
-                  maxValue={1}
-                  stepSize={0.01}
-                  tickInterval={0.01}
-                />
-              </UIHorizontalSizer>
-            </UIGroupBox>
-
-            <UIGroupBox title="Dilation" spacing={5} margin={5}>
-              <UIHorizontalSizer spacing={5}>
-                <UILabel text="Size: " textAlignment={TextAlign_Center} />
-                <UISpinBox
-                  minValue={3}
-                  maxValue={11}
-                  stepSize={2}
-                  value={parameters.dilationSize}
-                  onValueUpdated={(dilationSize) => {
-                    setParameters({ ...parameters, dilationSize });
-                    onParameterChange?.("dilationSize", dilationSize);
-                  }}
-                />
-                <UIStretch />
-              </UIHorizontalSizer>
-            </UIGroupBox>
-
-            <UIGroupBox title="Convolution" spacing={5} margin={5}>
-              <UIHorizontalSizer spacing={5}>
-                <UILabel text="Size: " textAlignment={TextAlign_Center} />
-                <UISpinBox
-                  minValue={3}
-                  maxValue={61}
-                  stepSize={2}
-                  value={parameters.convolutionSize}
-                  onValueUpdated={(convolutionSize) => {
-                    setParameters({ ...parameters, convolutionSize });
-                    onParameterChange?.("convolutionSize", convolutionSize);
-                  }}
-                />
-                <UIStretch />
-              </UIHorizontalSizer>
-            </UIGroupBox>
-
-            <UIPushButton
-              text="Process Preview"
-              onClick={onProcessPreviewClick}
-              enabled={
-                Boolean(targetImage && starlessImage) && isEnabledControls
-              }
-            />
-
-            <UIStretch />
-          </UIVerticalSizer>
-        </UIControl>
-
-        <UIVerticalSizer stretchFactor={1} margin={5} spacing={5}>
-          <ImagePreviewSelect
-            image={targetImage}
-            onRect={(rect) => setRect(rect)}
+      <UIHorizontalSizer>
+        <UIVerticalSizer margin={5} spacing={5}>
+          <UILabel
+            text={SCRIPT_DESCRIPTION}
+            frameStyle={FrameStyle_Box}
+            minHeight={70}
+            maxHeight={70}
+            wordWrapping={true}
+            useRichText={true}
+            stretchFactor={0}
           />
+
+          <UIHorizontalSizer>
+            <UILabel
+              text="Target view: "
+              textAlignment={TextAlign_VertCenter}
+              minWidth={80}
+            />
+            <UIViewList
+              onViewSelected={(view: View) => {
+                setTargetView(view.isNull ? null : view);
+              }}
+              stretchFactor={1}
+            />
+          </UIHorizontalSizer>
+
+          <UIHorizontalSizer>
+            <UILabel
+              text="Starless view: "
+              textAlignment={TextAlign_VertCenter}
+              minWidth={80}
+            />
+            <UIViewList
+              onViewSelected={(view: View) =>
+                setStarlessView(view.isNull ? null : view)
+              }
+              enabled={Boolean(targetView && !targetView.isNull)}
+              stretchFactor={1}
+            />
+          </UIHorizontalSizer>
+
+          <UIGroupBox title="Structures" spacing={5} margin={5}>
+            <UIHorizontalSizer>
+              <UILabel
+                minWidth={60}
+                text="Min layer:"
+                textAlignment={TextAlign_VertCenter}
+              />
+              <UISpinBox
+                minWidth={70}
+                minValue={1}
+                maxValue={10}
+                value={parameters.structuresMinLayer}
+                onValueUpdated={(structuresMinLayer) =>
+                  updateStructuresSettings({
+                    structuresMinLayer,
+                  })
+                }
+              />
+              <UIStretch />
+            </UIHorizontalSizer>
+            <UIHorizontalSizer>
+              <UILabel
+                minWidth={60}
+                text="Max layer:"
+                textAlignment={TextAlign_VertCenter}
+              />
+              <UISpinBox
+                minWidth={70}
+                maxValue={10}
+                value={parameters.structuresMaxLayer}
+                minValue={parameters.structuresMinLayer}
+                onValueUpdated={(structuresMaxLayer) =>
+                  updateStructuresSettings({
+                    structuresMaxLayer,
+                  })
+                }
+              />
+              <UIStretch />
+            </UIHorizontalSizer>
+          </UIGroupBox>
+
+          <UIGroupBox title="Binarization" spacing={5} margin={5}>
+            <UIHorizontalSizer spacing={5}>
+              <UILabel text="Threshold: " textAlignment={TextAlign_Center} />
+              <NumericControl
+                value={parameters.binarizeThreshold}
+                onValueUpdated={(binarizeThreshold) => {
+                  setParameters({ ...parameters, binarizeThreshold });
+                  onParameterChange?.("binarizeThreshold", binarizeThreshold);
+                }}
+                minValue={0}
+                maxValue={1}
+                stepSize={0.01}
+                tickInterval={0.01}
+              />
+            </UIHorizontalSizer>
+          </UIGroupBox>
+
+          <UIGroupBox title="Dilation" spacing={5} margin={5}>
+            <UIHorizontalSizer spacing={5}>
+              <UILabel text="Size: " textAlignment={TextAlign_Center} />
+              <UISpinBox
+                minValue={3}
+                maxValue={11}
+                stepSize={2}
+                value={parameters.dilationSize}
+                onValueUpdated={(dilationSize) => {
+                  setParameters({ ...parameters, dilationSize });
+                  onParameterChange?.("dilationSize", dilationSize);
+                }}
+              />
+              <UIStretch />
+            </UIHorizontalSizer>
+          </UIGroupBox>
+
+          <UIGroupBox title="Convolution" spacing={5} margin={5}>
+            <UIHorizontalSizer spacing={5}>
+              <UILabel text="Size: " textAlignment={TextAlign_Center} />
+              <UISpinBox
+                minValue={3}
+                maxValue={61}
+                stepSize={2}
+                value={parameters.convolutionSize}
+                onValueUpdated={(convolutionSize) => {
+                  setParameters({ ...parameters, convolutionSize });
+                  onParameterChange?.("convolutionSize", convolutionSize);
+                }}
+              />
+              <UIStretch />
+            </UIHorizontalSizer>
+          </UIGroupBox>
+
+          <UIGroupBox title="Select preview area" spacing={5} margin={5}>
+            <ImagePreviewSelect
+              image={targetImage}
+              minWidth={300}
+              minHeight={200}
+              onRect={(rect) => setRect(rect)}
+            />
+          </UIGroupBox>
+
+          <UIPushButton
+            text="Process Preview"
+            onClick={onProcessPreviewClick}
+            enabled={Boolean(targetImage && starlessImage) && isEnabledControls}
+          />
+
+          <UIStretch />
         </UIVerticalSizer>
 
-        <UIVerticalSizer margin={5} spacing={5}>
-          <ImagePreview image={previewImage} />
+        <UIVerticalSizer margin={5} spacing={5} stretchFactor={100}>
+          <UIControl>
+            <UIHorizontalSizer spacing={5}>
+              <ImagePreview
+                image={previewImages.original}
+                title="Original"
+                active={currentStep === "original"}
+                onMousePress={() =>
+                  previewImages.original && setCurrentStep("original")
+                }
+              />
+              <ImagePreview
+                image={previewImages.starless}
+                title="Starless"
+                active={currentStep === "starless"}
+                onMousePress={() =>
+                  previewImages.starless && setCurrentStep("starless")
+                }
+              />
+              <ImagePreview
+                image={previewImages.luminance}
+                title="Luminance"
+                active={currentStep === "luminance"}
+                onMousePress={() =>
+                  previewImages.luminance && setCurrentStep("luminance")
+                }
+              />
+              <ImagePreview
+                image={previewImages.structures}
+                title="Structure"
+                active={currentStep === "structures"}
+                onMousePress={() =>
+                  previewImages.structures && setCurrentStep("structures")
+                }
+              />
+              <ImagePreview
+                image={previewImages.binarized}
+                title="Binarized"
+                active={currentStep === "binarized"}
+                onMousePress={() =>
+                  previewImages.binarized && setCurrentStep("binarized")
+                }
+                // onMouseDoubleClick={() => {
+                //   const iw = new ImageWindow(
+                //     previewImages.binarized?.width,
+                //     previewImages.binarized?.width,
+                //     previewImages.binarized?.numberOfChannels
+                //   );
+                //   iw.mainView.beginProcess();
+                //   iw.mainView.image.assign(previewImages.binarized);
+                //   iw.mainView.endProcess();
+                // }}
+              />
+              <ImagePreview
+                image={previewImages.dilated}
+                title="Dilated"
+                active={currentStep === "dilated"}
+                onMousePress={() =>
+                  previewImages.dilated && setCurrentStep("dilated")
+                }
+              />
+              <ImagePreview
+                image={previewImages.convoluted}
+                title="Convoluted"
+                active={currentStep === "convoluted"}
+                onMousePress={() =>
+                  previewImages.convoluted && setCurrentStep("convoluted")
+                }
+              />
+              <ImagePreview
+                image={previewImages.halos}
+                title="Halos mask"
+                active={currentStep === "halos"}
+                onMousePress={() =>
+                  previewImages.halos && setCurrentStep("halos")
+                }
+              />
+              <ImagePreview
+                image={previewImages.result}
+                title="Result"
+                active={currentStep === "result"}
+                onMousePress={() =>
+                  previewImages.result && setCurrentStep("result")
+                }
+              />
+            </UIHorizontalSizer>
+          </UIControl>
+
           <ImagePreview
-            image={showOriginal ? previewImage : previewFinalImage}
-            title="Result"
+            stretchFactor={1}
+            image={currentImage}
             toolTip="Press the mouse to compare with original"
-            onMousePress={() => setShowOriginal(true)}
-            onMouseRelease={() => setShowOriginal(false)}
+            onReadout={onMainViewReadout}
+            onMousePress={onMainViewMousePress}
+            onMouseRelease={onMainViewMouseRelease}
           />
+          <UILabel text={readout} />
         </UIVerticalSizer>
       </UIHorizontalSizer>
-
-      <UIControl>
-        <UIHorizontalSizer margin={5} spacing={5}>
-          <ImagePreview image={previewLumImage} title="Luminance" />
-          <ImagePreview image={previewStructImage} title="Structure" />
-          <ImagePreview image={previewBinImage} title="Binarized" />
-          <ImagePreview image={previewDilatedImage} title="Dilated" />
-          <ImagePreview image={previewConvolutedImage} title="Convoluted" />
-          <ImagePreview image={previewHalosImage} title="Halos mask" />
-        </UIHorizontalSizer>
-      </UIControl>
 
       <UIHorizontalSizer spacing={5} margin={5}>
         <UIToolButton

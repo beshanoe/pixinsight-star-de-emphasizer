@@ -30,7 +30,7 @@ render(
     debug: false,
     dialog: {
       windowTitle: `${SCRIPT_NAME} Script`,
-      userResizable: false,
+      userResizable: true,
     },
   }
 );
