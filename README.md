@@ -31,7 +31,7 @@ The method consists of the following steps:
 
 The interface of the script allows you to see how each stage of the process modifies the image.
 
-![Script's Interface](./screenshot.png)
+![Script's Interface](./screenshot.jpg)
 
 1. Choose the target image and its corresponding starless image
 1. Select a preview area on the main preview image by clicking the mouse and scrolling to zoom in.
