@@ -1,4 +1,4 @@
-export function substract(image: Image, secondImage: Image) {
+export function subtract(image: Image, secondImage: Image) {
   const imageCopy = new Image();
   imageCopy.assign(image);
 
@@ -14,6 +14,8 @@ export function substract(image: Image, secondImage: Image) {
 
     if (v2.isLessThan(v1)) {
       v1.sub(v2);
+    } else {
+      v1.mul(0);
     }
 
     imageCopy.setPixelValue(v1);

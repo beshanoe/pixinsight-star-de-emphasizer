@@ -18,14 +18,14 @@ export function ImagePreviewSelect({
 >) {
   const controlRef = useRef<Control>(null);
   const [zoom, setZoom] = useState(1);
-  const [isDrag, setIsDrag] = useState(false);
   const [scrollAmount, setScrollAmount] = useState(0);
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const [rect, setRect] = useState<Rect>(new Rect());
 
   const [
     bmp,
-    defaultRectSize,
+    defaultRectWidth,
+    defaultRectHeight,
     scaleX,
     scaleY,
     offsetX,
@@ -38,7 +38,8 @@ export function ImagePreviewSelect({
     const bmp = image?.render().scaledTo(sw, sh);
     return [
       bmp,
-      Math.min(image?.width, image?.height) / 1.5,
+      image?.width,
+      Math.min(image?.width / 1.5, image?.height),
       bmp?.width / image?.width,
       bmp?.height / image?.height,
       size.w / 2 - bmp?.width / 2,
@@ -50,7 +51,7 @@ export function ImagePreviewSelect({
     if (!image) {
       return;
     }
-    const newRect = new Rect(defaultRectSize * 1.5, defaultRectSize);
+    const newRect = new Rect(defaultRectWidth, defaultRectHeight);
     newRect.moveTo(
       (image.width - newRect.width) / 2,
       (image.height - newRect.height) / 2
@@ -65,7 +66,7 @@ export function ImagePreviewSelect({
     }
     const oldCenter = new Point(rect.center);
     const newRect = new Rect(rect);
-    newRect.resizeTo((defaultRectSize * 1.5) / zoom, defaultRectSize / zoom);
+    newRect.resizeTo(defaultRectWidth / zoom, defaultRectHeight / zoom);
     newRect.width = Math.round(newRect.width);
     newRect.height = Math.round(newRect.height);
     newRect.center = oldCenter;
@@ -153,12 +154,9 @@ export function ImagePreviewSelect({
 
   function onMousePress(x: number, y: number) {
     updateRectPosition(x, y);
-    setIsDrag(true);
   }
 
-  function onMouseRelease() {
-    setIsDrag(false);
-  }
+  function onMouseRelease() {}
 
   function onMouseMove(x: number, y: number) {
     updateRectPosition(x, y);

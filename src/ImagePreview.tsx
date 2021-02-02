@@ -2,9 +2,18 @@ import {
   Align_Center,
   FrameStyle_Box,
   FrameStyle_Styled,
+  StdCursor_ClosedHand,
+  StdCursor_Cross,
   TextAlign_Center,
 } from "@pixinsight/core";
-import { UIControl, UIFrame, UILabel, UIVerticalSizer } from "@pixinsight/ui";
+import {
+  UIControl,
+  UIFrame,
+  UIHorizontalSizer,
+  UILabel,
+  UIStretch,
+  UIVerticalSizer,
+} from "@pixinsight/ui";
 import React, { useMemo, useRef, useState } from "react";
 
 export type ReadoutData = [
@@ -21,17 +30,20 @@ export function ImagePreview({
   title,
   active,
   children,
-  onReadout,
+  showReadout,
+  onMousePress,
   ...props
 }: {
   image?: Image;
   title?: string;
   active?: boolean;
-  onReadout?: (data: ReadoutData) => void;
+  showReadout?: boolean;
 } & React.ComponentProps<typeof UIFrame>) {
   const controlRef = useRef<Control>(null);
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
-
+  const [cross, setCross] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [readout, setReadout] = useState<ReadoutData>();
+  const [readoutText, setReadoutText] = useState("");
   const [bmp, offsetX, offsetY, channelsCount] = useMemo(() => {
     const ratio = image?.width / image?.height;
     const [sw, sh] = [size.w, size.h];
@@ -71,6 +83,11 @@ export function ImagePreview({
     const G = new Graphics(control);
 
     G.drawBitmap(offsetX, offsetY, bmp);
+    if (showReadout) {
+      G.pen = new Pen(0xffffffff);
+      G.drawLine(cross.x - 15, cross.y, cross.x + 15, cross.y);
+      G.drawLine(cross.x, cross.y - 15, cross.x, cross.y + 15);
+    }
     G.end();
 
     gc();
@@ -81,25 +98,34 @@ export function ImagePreview({
   }
 
   function onMouseMove(x: number, y: number) {
-    if (!onReadout) {
+    if (!showReadout) {
       return;
     }
-    const [rx, ry] = [
-      Math.round(((x - offsetX) * image?.width) / bmp?.width),
-      Math.round(((y - offsetY) * image?.height) / bmp?.height),
-    ];
-    if (rx < 0 || ry < 0 || rx > image?.width || ry > image?.height) {
-      return;
-    }
+    setCross({ x, y });
 
-    const rect = new Rect(rx, ry, rx + 1, ry + 1);
-    const result: ReadoutData = [rx, ry, channelsCount, 0, 0, 0];
-    for (let c = 0; c < channelsCount; c++) {
-      const pixels: number[] = [];
-      image?.getSamples(pixels, rect, c);
-      result[c + 3] = pixels[0];
+    const [rx, ry] = [x - offsetX, y - offsetY];
+    if (rx < 0 || ry < 0 || rx > bmp?.width || ry > bmp?.height) {
+      return;
     }
-    onReadout(result);
+    const pixelValue = bmp?.pixel(rx, ry);
+    const [c0, c1, c2] = [
+      ((pixelValue & 0x00ff0000) >> 16) / 0xff,
+      ((pixelValue & 0x0000ff00) >> 8) / 0xff,
+      (pixelValue & 0x000000ff) / 0xff,
+    ];
+
+    let readout = `X: ${rx} Y: ${ry}`;
+    if (channelsCount === 1 && c0 != null) {
+      readout += ` K: ${c0.toFixed(4)}`;
+    } else {
+      readout += ` R: ${c0.toFixed(4)} G: ${c1.toFixed(4)} B: ${c2.toFixed(4)}`;
+    }
+    setReadoutText(readout);
+    setReadout([rx, ry, channelsCount, c0, c1, c2]);
+  }
+
+  function onMousePressInternal(...args: any[]) {
+    onMousePress?.(...args, readout);
   }
 
   return (
@@ -124,22 +150,24 @@ export function ImagePreview({
         minWidth={100}
         minHeight={100}
         {...props}
+        onMousePress={onMousePressInternal}
       >
-        {
-          image ? (
-            <UIControl
-              ref={controlRef}
-              onPaint={onPaint}
-              onResize={onResize}
-              onMouseMove={onMouseMove}
-              mouseTracking={true}
-            >
-              {children}
-            </UIControl>
-          ) : null
-          // <UILabel alignment={Align_Center} text={title} />
-        }
+        {image ? (
+          <UIControl
+            ref={controlRef}
+            onPaint={onPaint}
+            onResize={onResize}
+            onMouseMove={onMouseMove}
+            mouseTracking={Boolean(showReadout)}
+          >
+            {children}
+          </UIControl>
+        ) : null}
       </UIFrame>
+      <UIHorizontalSizer>
+        <UIStretch />
+        <UILabel text={readoutText} />
+      </UIHorizontalSizer>
     </UIVerticalSizer>
   );
 }

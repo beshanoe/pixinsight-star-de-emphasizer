@@ -1,27 +1,22 @@
 import {
   FrameStyle_Box,
-  HorizontalSizer,
   TextAlign_Center,
   TextAlign_VertCenter,
-  UndoFlag_NoSwapFile,
 } from "@pixinsight/core";
 import { useDialog } from "@pixinsight/react";
 import {
-  UIComboBox,
   UIControl,
-  UIEdit,
   UIGroupBox,
   UIHorizontalSizer,
   UILabel,
   UIPushButton,
-  UISlider,
   UISpinBox,
   UIStretch,
   UIToolButton,
   UIVerticalSizer,
   UIViewList,
 } from "@pixinsight/ui";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { version } from "../package.json";
 import { ImagePreview, ReadoutData } from "./ImagePreview";
 import { ImagePreviewSelect } from "./ImagePreviewSelect";
@@ -29,7 +24,7 @@ import { NumericControl } from "./NumericControl";
 import { binarize } from "./process/binarize";
 import { convolute } from "./process/convolute";
 import { dilation } from "./process/dilation";
-import { assignThroughMask, substract } from "./process/pixelMath";
+import { assignThroughMask, subtract } from "./process/pixelMath";
 import { structures } from "./process/structures";
 
 export const SCRIPT_NAME = "Star De-emphasizer";
@@ -83,7 +78,6 @@ export function ScriptDialog({
   const [starlessView, setStarlessView] = useState<View | null>(null);
   const [targetView, setTargetView] = useState<View | null>(null);
   const [rect, setRect] = useState<Rect>(new Rect());
-  const [readout, setReadout] = useState("");
 
   const [previewImages, setPreviewImages] = useState(
     {} as { [key in Step]?: Image }
@@ -170,7 +164,7 @@ export function ScriptDialog({
     const convolutedImage = convolute(dilatedImage, parameters.convolutionSize);
 
     console.log("Calculate halos mask...");
-    const halosImage = substract(convolutedImage, lumImage);
+    const halosImage = subtract(convolutedImage, lumImage);
 
     console.log("Render result image...");
     const finalImage = assignThroughMask(image, starlessImage, halosImage);
@@ -258,24 +252,42 @@ export function ScriptDialog({
     dialog.newInstance();
   }
 
-  function onMainViewMousePress() {
-    const newStep = stepMap[currentStep];
-    setPreviousStep(currentStep);
-    setCurrentStep(newStep);
-  }
-
-  function onMainViewMouseRelease() {
-    setCurrentStep(previousStep);
-  }
-
-  function onMainViewReadout([x, y, count, c0, c1, c2]: ReadoutData) {
-    let readout = `X: ${x} Y: ${y}`;
-    if (count === 1 && c0 != null) {
-      readout += ` K: ${c0.toFixed(4)}`;
-    } else {
-      readout += ` R: ${c0.toFixed(4)} G: ${c1.toFixed(4)} B: ${c2.toFixed(4)}`;
+  function onMainViewMousePress(
+    _x: number,
+    _y: number,
+    button: number,
+    _state: any,
+    _mods: any,
+    readoutData: ReadoutData
+  ) {
+    if (button === 1 && currentStep === "structures") {
+      setParameters({
+        ...parameters,
+        binarizeThreshold: Math.floor(readoutData[3] * 100) / 100,
+      });
+    } else if (button === 2) {
+      const newStep = stepMap[currentStep];
+      setPreviousStep(currentStep);
+      setCurrentStep(newStep);
     }
-    setReadout(readout);
+  }
+
+  function onMainViewMouseRelease(_x: number, _y: number, button: number) {
+    if (button === 2) {
+      setCurrentStep(previousStep);
+    }
+  }
+
+  function saveAsView(image?: Image) {
+    const iw = new ImageWindow(
+      image?.width,
+      image?.width,
+      image?.numberOfChannels
+    );
+    iw.mainView.beginProcess();
+    iw.mainView.image.assign(image);
+    iw.mainView.endProcess();
+    iw.show();
   }
 
   return (
@@ -441,6 +453,7 @@ export function ScriptDialog({
                 onMousePress={() =>
                   previewImages.original && setCurrentStep("original")
                 }
+                onMouseDoubleClick={() => saveAsView(previewImages.original)}
               />
               <ImagePreview
                 image={previewImages.starless}
@@ -449,6 +462,7 @@ export function ScriptDialog({
                 onMousePress={() =>
                   previewImages.starless && setCurrentStep("starless")
                 }
+                onMouseDoubleClick={() => saveAsView(previewImages.starless)}
               />
               <ImagePreview
                 image={previewImages.luminance}
@@ -457,6 +471,7 @@ export function ScriptDialog({
                 onMousePress={() =>
                   previewImages.luminance && setCurrentStep("luminance")
                 }
+                onMouseDoubleClick={() => saveAsView(previewImages.luminance)}
               />
               <ImagePreview
                 image={previewImages.structures}
@@ -465,6 +480,7 @@ export function ScriptDialog({
                 onMousePress={() =>
                   previewImages.structures && setCurrentStep("structures")
                 }
+                onMouseDoubleClick={() => saveAsView(previewImages.structures)}
               />
               <ImagePreview
                 image={previewImages.binarized}
@@ -473,16 +489,7 @@ export function ScriptDialog({
                 onMousePress={() =>
                   previewImages.binarized && setCurrentStep("binarized")
                 }
-                // onMouseDoubleClick={() => {
-                //   const iw = new ImageWindow(
-                //     previewImages.binarized?.width,
-                //     previewImages.binarized?.width,
-                //     previewImages.binarized?.numberOfChannels
-                //   );
-                //   iw.mainView.beginProcess();
-                //   iw.mainView.image.assign(previewImages.binarized);
-                //   iw.mainView.endProcess();
-                // }}
+                onMouseDoubleClick={() => saveAsView(previewImages.binarized)}
               />
               <ImagePreview
                 image={previewImages.dilated}
@@ -491,6 +498,7 @@ export function ScriptDialog({
                 onMousePress={() =>
                   previewImages.dilated && setCurrentStep("dilated")
                 }
+                onMouseDoubleClick={() => saveAsView(previewImages.dilated)}
               />
               <ImagePreview
                 image={previewImages.convoluted}
@@ -499,6 +507,7 @@ export function ScriptDialog({
                 onMousePress={() =>
                   previewImages.convoluted && setCurrentStep("convoluted")
                 }
+                onMouseDoubleClick={() => saveAsView(previewImages.convoluted)}
               />
               <ImagePreview
                 image={previewImages.halos}
@@ -507,6 +516,7 @@ export function ScriptDialog({
                 onMousePress={() =>
                   previewImages.halos && setCurrentStep("halos")
                 }
+                onMouseDoubleClick={() => saveAsView(previewImages.halos)}
               />
               <ImagePreview
                 image={previewImages.result}
@@ -515,6 +525,7 @@ export function ScriptDialog({
                 onMousePress={() =>
                   previewImages.result && setCurrentStep("result")
                 }
+                onMouseDoubleClick={() => saveAsView(previewImages.result)}
               />
             </UIHorizontalSizer>
           </UIControl>
@@ -522,12 +533,11 @@ export function ScriptDialog({
           <ImagePreview
             stretchFactor={1}
             image={currentImage}
-            toolTip="Press the mouse to compare with original"
-            onReadout={onMainViewReadout}
+            toolTip="Press the right mouse button to compare with the previous step"
+            showReadout={true}
             onMousePress={onMainViewMousePress}
             onMouseRelease={onMainViewMouseRelease}
           />
-          <UILabel text={readout} />
         </UIVerticalSizer>
       </UIHorizontalSizer>
 

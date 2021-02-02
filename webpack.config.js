@@ -10,7 +10,7 @@ const packageJson = require("./package.json");
 
 const zipFilename = "StarDe-emphasizer.zip";
 
-module.exports = ({ zip }) => {
+module.exports = ({ zip, featureId }) => {
   return {
     entry: "./src/index.tsx",
     mode: "production",
@@ -73,7 +73,7 @@ module.exports = ({ zip }) => {
                     const { name, pixinsight: { script } = {} } = packageJson;
 
                     const newSource = [
-                      `#feature-id ${script["feature-id"] || name}`,
+                      `#feature-id ${featureId || script["feature-id"] || name}`,
                       `#feature-info ${script["feature-info"] || name}`,
                       bundleSource,
                     ].join("\n");
@@ -81,26 +81,6 @@ module.exports = ({ zip }) => {
                     compilation.assets["script.js"] = new ConcatSource(
                       newSource
                     );
-                  }
-                  return Promise.resolve();
-                }
-              );
-
-              compilation.hooks.processAssets.tapPromise(
-                {
-                  name: "FileListPlugin",
-                  stage: webpack.Compilation.PROCESS_ASSETS_STAGE_ANALYSE,
-                },
-                () => {
-                  const asset = compilation.assets[zipFilename];
-                  if (asset) {
-                    const zipSource = asset.source();
-
-                    const hash = createHash("sha1")
-                      .update(zipSource)
-                      .digest("hex");
-
-                    compilation.emitAsset(hash, new ConcatSource());
                   }
                   return Promise.resolve();
                 }

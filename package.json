@@ -6,12 +6,12 @@
   "license": "MIT",
   "scripts": {
     "build": "webpack --env zip",
-    "dev": "webpack --watch",
+    "dev": "webpack --watch --env featureId=a__StarDe-emphasizer",
     "zip": "export N=StarDe-emphasizer && cd dist && rm -rf $N && mkdir $N && cp *.js $N && zip -r $N.zip $N && rm -rf $N"
   },
   "pixinsight": {
     "script": {
-      "feature-id": "__Star De-emphasizer",
+      "feature-id": "AstroSwell > Star De-emphasizer",
       "feature-info": "Star De-emphasizer script"
     }
   },
