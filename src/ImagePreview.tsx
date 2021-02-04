@@ -14,7 +14,7 @@ import {
   UIStretch,
   UIVerticalSizer,
 } from "@pixinsight/ui";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 
 export type ReadoutData = [
   x: number,
@@ -75,6 +75,10 @@ export function ImagePreview({
     ];
   }, [image, size]);
 
+  useEffect(() => {
+    controlRef.current?.update();
+  }, [size, image, cross]);
+
   function onPaint() {
     if (!controlRef.current || !bmp) {
       return;
@@ -114,14 +118,19 @@ export function ImagePreview({
       (pixelValue & 0x000000ff) / 0xff,
     ];
 
-    let readout = `X: ${rx} Y: ${ry}`;
+    const [imageX, imageY] = [
+      Math.round((rx * image?.width) / bmp?.width),
+      Math.round((ry * image?.height) / bmp?.height),
+    ];
+
+    let readout = `X: ${imageX} Y: ${imageY}`;
     if (channelsCount === 1 && c0 != null) {
       readout += ` K: ${c0.toFixed(4)}`;
     } else {
       readout += ` R: ${c0.toFixed(4)} G: ${c1.toFixed(4)} B: ${c2.toFixed(4)}`;
     }
     setReadoutText(readout);
-    setReadout([rx, ry, channelsCount, c0, c1, c2]);
+    setReadout([imageX, imageY, channelsCount, c0, c1, c2]);
   }
 
   function onMousePressInternal(...args: any[]) {
