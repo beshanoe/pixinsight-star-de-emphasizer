@@ -18,9 +18,9 @@
   "dependencies": {
     "@babel/core": "^7.12.10",
     "@babel/preset-env": "^7.12.11",
-    "@pixinsight/core": "^0.0.1",
-    "@pixinsight/react": "^0.0.1",
-    "@pixinsight/ui": "^0.0.1",
+    "@pixinsight/core": "^0.0.2",
+    "@pixinsight/react": "^0.0.2",
+    "@pixinsight/ui": "^0.0.2",
     "@types/react": "^17.0.0",
     "@types/webpack": "^4.41.26",
     "@types/webpack-sources": "^2.1.0",

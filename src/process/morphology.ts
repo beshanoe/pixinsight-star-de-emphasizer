@@ -1,4 +1,13 @@
-export function dilation(image: Image, size: number) {
+export enum MorphologicalOperator {
+  ErosionFilter = 0,
+  DilationFilter = 1,
+  MedianFilter = 2,
+  SeletctionFilter =3,
+  MidpointFilter = 4,
+  AlphaTrimmedMeanFilter = 5
+}
+
+export function morphology(operator: MorphologicalOperator,  image: Image, size: number) {
   const imageCopy = new Image();
   imageCopy.assign(image);
 
@@ -11,7 +20,7 @@ export function dilation(image: Image, size: number) {
   };
 
   try {
-    imageCopy.morphologicalTransformation(1, [sizeToMaskMap[size]]);
+    imageCopy.morphologicalTransformation(operator, [sizeToMaskMap[size]]);
   } catch (error) {
     console.log(error);
   }

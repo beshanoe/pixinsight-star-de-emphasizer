@@ -19,6 +19,8 @@ Object.entries(defaultParameters).forEach(([key, value]) => {
   parameters[key] = parsed;
 });
 
+console.clear();
+
 render(
   <ScriptDialog
     parameters={parameters}

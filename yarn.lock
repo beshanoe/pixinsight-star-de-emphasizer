@@ -819,27 +819,27 @@
   resolved "https://registry.yarnpkg.com/@discoveryjs/json-ext/-/json-ext-0.5.2.tgz#8f03a22a04de437254e8ce8cc84ba39689288752"
   integrity sha512-HyYEUDeIj5rRQU2Hk5HTB2uHsbRQpF70nvMhVzi+VJR0X+xNEhjPui4/kBf3VeH/wqD28PT4sVOm8qqLjBrSZg==
 
-"@pixinsight/core@^0.0.1":
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/@pixinsight/core/-/core-0.0.1.tgz#f0c81a8b1b638ab12e32cf81d8be92342b67a647"
-  integrity sha512-248CaNguUGIEOHrANS1qwF/lC8JdfBYgCO+8PIhZnYECtMXOiGiYMl+Mo+jdKpwKPyhbAM7F2vXXwpXYtZIHhw==
+"@pixinsight/core@^0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@pixinsight/core/-/core-0.0.2.tgz#930bb37fd4e0222e4dd37352046e1eabefb17c8c"
+  integrity sha512-YfVxSdO3E7sCVua2HFIYzrz1bgUrZQlQYPoEoqJuKtLQTYFLX9ppXx17hO5WwL6Ke1Nx3espnfD6bQFHi5B3qg==
 
-"@pixinsight/react@^0.0.1":
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/@pixinsight/react/-/react-0.0.1.tgz#76721ed5ea206dd43c9ddf8e9f8ec0aea3728662"
-  integrity sha512-bzpKn0oUCnkHuUeV1BrTjn4YCyk/wtefyPMCatgyOaLAx2wilTlCcBDnZdhnPOiXN1su90vyVDQ+SpSdyilFUA==
+"@pixinsight/react@^0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@pixinsight/react/-/react-0.0.2.tgz#5ea62580cf0c4c5bd36e1e6a8c174dd8e8d382cd"
+  integrity sha512-Gs05oUGiLnWzTocCSzSsUDy7l/h8GwKIgtpb5g010x+FvDsezXeuWMB0e4G1DqK1cMAcYRCInmUg9ln1khJXiQ==
   dependencies:
-    "@pixinsight/core" "^0.0.1"
+    "@pixinsight/core" "^0.0.2"
     core-js "3"
     react "^17.0.1"
     react-reconciler "^0.26.1"
 
-"@pixinsight/ui@^0.0.1":
-  version "0.0.1"
-  resolved "https://registry.yarnpkg.com/@pixinsight/ui/-/ui-0.0.1.tgz#96949a80a828525f51e68d689904c56a9d23c97e"
-  integrity sha512-clT2Ab9xiNIYVEMdgvjuYHstQ0JOFwCvGlhuyQoLHm4EqJ+d9FuHcPqRQLpN89+m1gZmmyTMBNDh0IcB/xwLIQ==
+"@pixinsight/ui@^0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@pixinsight/ui/-/ui-0.0.2.tgz#97a7c22106b48a495182990843a4f0f34a445762"
+  integrity sha512-68/aTgQMMefPjW2g/PBB/82d3SmtjY98Pb0qD6mp1Xxc94vgz53FTj+kEHaRTG9Xz53yMdREZFjAQcMUO1hawA==
   dependencies:
-    "@pixinsight/core" "^0.0.1"
+    "@pixinsight/core" "^0.0.2"
     react "^17.0.1"
 
 "@types/anymatch@*":

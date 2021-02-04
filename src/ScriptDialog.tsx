@@ -1,8 +1,4 @@
-import {
-  FrameStyle_Box,
-  TextAlign_Center,
-  TextAlign_VertCenter,
-} from "@pixinsight/core";
+import { FrameStyle_Box, TextAlign_VertCenter } from "@pixinsight/core";
 import { useDialog } from "@pixinsight/react";
 import {
   UIControl,
@@ -23,17 +19,20 @@ import { ImagePreviewSelect } from "./ImagePreviewSelect";
 import { NumericControl } from "./NumericControl";
 import { binarize } from "./process/binarize";
 import { convolute } from "./process/convolute";
-import { dilation } from "./process/dilation";
+import { MorphologicalOperator, morphology } from "./process/morphology";
 import { assignThroughMask, subtract } from "./process/pixelMath";
 import { structures } from "./process/structures";
 
 export const SCRIPT_NAME = "Star De-emphasizer";
+export const SCRIPT_VERSION = version;
 const SCRIPT_DESCRIPTION = `<b> ${SCRIPT_NAME}  v${version}</b> &mdash; This script uses the method suggested by Adam Block to de-emphasize stars.<br><br>Copyright (c) 2021 Maxim Valenko @AstroSwell`;
 
 export const defaultParameters = {
   structuresMinLayer: 1,
   structuresMaxLayer: 3,
   binarizeThreshold: 0.2,
+  closingSize: 7,
+  closingDilationSize: 9,
   dilationSize: 5,
   convolutionSize: 9,
 };
@@ -46,6 +45,7 @@ type Step =
   | "luminance"
   | "structures"
   | "binarized"
+  | "closed"
   | "dilated"
   | "convoluted"
   | "halos"
@@ -57,6 +57,7 @@ const stepMap: Record<Step, Step> = {
   luminance: "original",
   structures: "luminance",
   binarized: "structures",
+  closed: "binarized",
   dilated: "binarized",
   convoluted: "dilated",
   halos: "convoluted",
@@ -86,7 +87,8 @@ export function ScriptDialog({
   const [currentStep, setCurrentStep] = useState<Step>("original");
   const [previousStep, setPreviousStep] = useState<Step>("original");
 
-  const [isEnabledControls, setIsEnabledControls] = useState(true);
+  const [isControlsEnabled, setIsControlsEnabled] = useState(true);
+  const [isClosingEnabled, setIsClosingEnabled] = useState(false);
 
   const [parameters, setParameters] = useState({
     ...defaultParameters,
@@ -112,6 +114,10 @@ export function ScriptDialog({
         starless: previewImages.starless,
       });
       setCurrentStep("original");
+    } else {
+      setPreviewImages({
+        starless: previewImages.starless,
+      });
     }
 
     if (starlessImage) {
@@ -121,6 +127,10 @@ export function ScriptDialog({
       setPreviewImages({
         original,
         starless: previewStarlessImage,
+      });
+    } else {
+      setPreviewImages({
+        original
       });
     }
   }, [rect, targetImage, starlessImage]);
@@ -157,8 +167,30 @@ export function ScriptDialog({
       threshold: parameters.binarizeThreshold,
     });
 
+    let closedImage: Image | undefined;
+    let binarizedMinusClosed: Image | undefined;
+
+    if (isClosingEnabled) {
+      console.log("Closing...");
+      closedImage = morphology(
+        MorphologicalOperator.DilationFilter,
+        morphology(
+          MorphologicalOperator.ErosionFilter,
+          binarizedImage,
+          parameters.closingSize
+        ),
+        parameters.closingDilationSize
+      );
+
+      binarizedMinusClosed = subtract(binarizedImage, closedImage)
+    }
+
     console.log("MorphologicalTransformation Dilation...");
-    const dilatedImage = dilation(binarizedImage, parameters.dilationSize);
+    const dilatedImage = morphology(
+      MorphologicalOperator.DilationFilter,
+      binarizedMinusClosed ?? binarizedImage,
+      parameters.dilationSize
+    );
 
     console.log("Convolution...");
     const convolutedImage = convolute(dilatedImage, parameters.convolutionSize);
@@ -173,6 +205,7 @@ export function ScriptDialog({
       lumImage,
       structuresImage,
       binarizedImage,
+      closedImage,
       dilatedImage,
       convolutedImage,
       halosImage,
@@ -185,13 +218,14 @@ export function ScriptDialog({
       return;
     }
 
-    setIsEnabledControls(false);
+    setIsControlsEnabled(false);
 
     try {
       const {
         lumImage,
         structuresImage,
         binarizedImage,
+        closedImage,
         dilatedImage,
         convolutedImage,
         halosImage,
@@ -203,6 +237,7 @@ export function ScriptDialog({
         luminance: lumImage,
         structures: structuresImage,
         binarized: binarizedImage,
+        closed: closedImage,
         dilated: dilatedImage,
         convoluted: convolutedImage,
         halos: halosImage,
@@ -215,7 +250,7 @@ export function ScriptDialog({
       console.error(error);
     }
 
-    setIsEnabledControls(true);
+    setIsControlsEnabled(true);
   }
 
   function onApplyClick() {
@@ -223,7 +258,7 @@ export function ScriptDialog({
       return;
     }
 
-    setIsEnabledControls(false);
+    setIsControlsEnabled(false);
 
     try {
       const { finalImage } = process(targetImage, starlessImage);
@@ -241,7 +276,7 @@ export function ScriptDialog({
       console.error(error);
     }
 
-    setIsEnabledControls(true);
+    setIsControlsEnabled(true);
   }
 
   function onResetClick() {
@@ -341,7 +376,7 @@ export function ScriptDialog({
                 textAlignment={TextAlign_VertCenter}
               />
               <UISpinBox
-                minWidth={70}
+                autoAdjustWidth={false}
                 minValue={1}
                 maxValue={10}
                 value={parameters.structuresMinLayer}
@@ -360,7 +395,7 @@ export function ScriptDialog({
                 textAlignment={TextAlign_VertCenter}
               />
               <UISpinBox
-                minWidth={70}
+                autoAdjustWidth={false}
                 maxValue={10}
                 value={parameters.structuresMaxLayer}
                 minValue={parameters.structuresMinLayer}
@@ -376,7 +411,10 @@ export function ScriptDialog({
 
           <UIGroupBox title="Binarization" spacing={5} margin={5}>
             <UIHorizontalSizer spacing={5}>
-              <UILabel text="Threshold: " textAlignment={TextAlign_Center} />
+              <UILabel
+                text="Threshold: "
+                textAlignment={TextAlign_VertCenter}
+              />
               <NumericControl
                 value={parameters.binarizeThreshold}
                 onValueUpdated={(binarizeThreshold) => {
@@ -391,9 +429,59 @@ export function ScriptDialog({
             </UIHorizontalSizer>
           </UIGroupBox>
 
+          <UIGroupBox
+            title="Closing"
+            spacing={5}
+            margin={5}
+            titleCheckBox={true}
+            checked={isClosingEnabled}
+            onCheck={(checked) => setIsClosingEnabled(checked)}
+          >
+            <UIHorizontalSizer spacing={5}>
+              <UILabel
+                text="Size: "
+                textAlignment={TextAlign_VertCenter}
+                minWidth={70}
+              />
+              <UISpinBox
+                minValue={3}
+                maxValue={11}
+                stepSize={2}
+                value={parameters.closingSize}
+                onValueUpdated={(closingSize) => {
+                  setParameters({ ...parameters, closingSize });
+                  onParameterChange?.("closingSize", closingSize);
+                }}
+              />
+              <UIStretch />
+            </UIHorizontalSizer>
+
+            <UIHorizontalSizer spacing={5}>
+              <UILabel
+                text="Dilation size: "
+                textAlignment={TextAlign_VertCenter}
+                minWidth={70}
+              />
+              <UISpinBox
+                minValue={3}
+                maxValue={11}
+                stepSize={2}
+                value={parameters.closingDilationSize}
+                onValueUpdated={(closingDilationSize) => {
+                  setParameters({ ...parameters, closingDilationSize });
+                  onParameterChange?.(
+                    "closingDilationSize",
+                    closingDilationSize
+                  );
+                }}
+              />
+              <UIStretch />
+            </UIHorizontalSizer>
+          </UIGroupBox>
+
           <UIGroupBox title="Dilation" spacing={5} margin={5}>
             <UIHorizontalSizer spacing={5}>
-              <UILabel text="Size: " textAlignment={TextAlign_Center} />
+              <UILabel text="Size: " textAlignment={TextAlign_VertCenter} />
               <UISpinBox
                 minValue={3}
                 maxValue={11}
@@ -410,7 +498,7 @@ export function ScriptDialog({
 
           <UIGroupBox title="Convolution" spacing={5} margin={5}>
             <UIHorizontalSizer spacing={5}>
-              <UILabel text="Size: " textAlignment={TextAlign_Center} />
+              <UILabel text="Size: " textAlignment={TextAlign_VertCenter} />
               <UISpinBox
                 minValue={3}
                 maxValue={61}
@@ -437,7 +525,7 @@ export function ScriptDialog({
           <UIPushButton
             text="Process Preview"
             onClick={onProcessPreviewClick}
-            enabled={Boolean(targetImage && starlessImage) && isEnabledControls}
+            enabled={Boolean(targetImage && starlessImage) && isControlsEnabled}
           />
 
           <UIStretch />
@@ -491,6 +579,17 @@ export function ScriptDialog({
                 }
                 onMouseDoubleClick={() => saveAsView(previewImages.binarized)}
               />
+              {isClosingEnabled && (
+                <ImagePreview
+                  image={previewImages.closed}
+                  title="Closing"
+                  active={currentStep === "closed"}
+                  onMousePress={() =>
+                    previewImages.closed && setCurrentStep("closed")
+                  }
+                  onMouseDoubleClick={() => saveAsView(previewImages.closed)}
+                />
+              )}
               <ImagePreview
                 image={previewImages.dilated}
                 title="Dilated"
@@ -551,13 +650,13 @@ export function ScriptDialog({
           onClick={onResetClick}
           icon=":/icons/reload.png"
           text="Reset"
-          enabled={isEnabledControls}
+          enabled={isControlsEnabled}
         />
         <UIPushButton
           onClick={onApplyClick}
           icon=":/icons/ok.png"
           text="Apply"
-          enabled={isEnabledControls}
+          enabled={isControlsEnabled}
         />
       </UIHorizontalSizer>
     </UIVerticalSizer>

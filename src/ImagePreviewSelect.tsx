@@ -80,6 +80,10 @@ export function ImagePreviewSelect({
     }
   }, [rect]);
 
+  useEffect(() => {
+    controlRef.current?.update();
+  }, [zoom, size, rect, image]);
+
   function onPaint() {
     if (!controlRef.current || !bmp) {
       return;
