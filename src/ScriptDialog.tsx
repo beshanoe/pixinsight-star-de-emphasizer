@@ -28,9 +28,12 @@ export const SCRIPT_VERSION = version;
 const SCRIPT_DESCRIPTION = `<b> ${SCRIPT_NAME}  v${version}</b> &mdash; This script uses the method suggested by Adam Block to de-emphasize stars.<br><br>Copyright (c) 2021 Maxim Valenko @AstroSwell`;
 
 export const defaultParameters = {
+  targetViewId: "",
+  starlessViewId: "",
   structuresMinLayer: 1,
   structuresMaxLayer: 3,
   binarizeThreshold: 0.2,
+  closingEnabled: false,
   closingSize: 7,
   closingDilationSize: 9,
   dilationSize: 5,
@@ -74,10 +77,15 @@ export function ScriptDialog({
     value: Parameters[K]
   ) => void;
 }) {
+  const [parameters, setParameters] = useState({
+    ...defaultParameters,
+    ...storedParameters,
+  });
+
   const dialog = useDialog();
 
-  const [starlessView, setStarlessView] = useState<View | null>(null);
-  const [targetView, setTargetView] = useState<View | null>(null);
+  const [targetView, setTargetView] = useState(new View());
+  const [starlessView, setStarlessView] = useState(new View());
   const [rect, setRect] = useState<Rect>(new Rect());
 
   const [previewImages, setPreviewImages] = useState(
@@ -88,12 +96,7 @@ export function ScriptDialog({
   const [previousStep, setPreviousStep] = useState<Step>("original");
 
   const [isControlsEnabled, setIsControlsEnabled] = useState(true);
-  const [isClosingEnabled, setIsClosingEnabled] = useState(false);
-
-  const [parameters, setParameters] = useState({
-    ...defaultParameters,
-    ...storedParameters,
-  });
+  const [isClosingEnabled, setIsClosingEnabled] = useState(parameters.closingEnabled);
 
   const targetImage = useMemo(() => targetView?.image, [targetView]);
   const starlessImage = useMemo(() => starlessView?.image, [starlessView]);
@@ -101,6 +104,11 @@ export function ScriptDialog({
     currentStep,
     previewImages,
   ]);
+
+  useEffect(() => {
+    setTargetView((View as any).viewById(parameters.targetViewId)); // TODO remove any after updating typings
+    setStarlessView((View as any).viewById(parameters.starlessViewId));
+  }, []);
 
   useEffect(() => {
     let original = previewImages.original;
@@ -130,7 +138,7 @@ export function ScriptDialog({
       });
     } else {
       setPreviewImages({
-        original
+        original,
       });
     }
   }, [rect, targetImage, starlessImage]);
@@ -182,7 +190,7 @@ export function ScriptDialog({
         parameters.closingDilationSize
       );
 
-      binarizedMinusClosed = subtract(binarizedImage, closedImage)
+      binarizedMinusClosed = subtract(binarizedImage, closedImage);
     }
 
     console.log("MorphologicalTransformation Dilation...");
@@ -283,6 +291,11 @@ export function ScriptDialog({
     setParameters(defaultParameters);
   }
 
+  function updateParameter<K extends keyof Parameters>(name: K, value: Parameters[K]) {
+    setParameters({...parameters, [name]: value})
+    onParameterChange?.(name, value)
+  }
+
   function onNewInstancePress() {
     dialog.newInstance();
   }
@@ -296,10 +309,7 @@ export function ScriptDialog({
     readoutData: ReadoutData
   ) {
     if (button === 1 && currentStep === "structures") {
-      setParameters({
-        ...parameters,
-        binarizeThreshold: Math.floor(readoutData[3] * 100) / 100,
-      });
+      updateParameter('binarizeThreshold', Math.floor(readoutData[3] * 100) / 100)
     } else if (button === 2) {
       const newStep = stepMap[currentStep];
       setPreviousStep(currentStep);
@@ -346,8 +356,10 @@ export function ScriptDialog({
               minWidth={80}
             />
             <UIViewList
+              currentView={targetView}
               onViewSelected={(view: View) => {
-                setTargetView(view.isNull ? null : view);
+                setTargetView(view);
+                updateParameter("targetViewId", view.id);
               }}
               stretchFactor={1}
             />
@@ -360,9 +372,11 @@ export function ScriptDialog({
               minWidth={80}
             />
             <UIViewList
-              onViewSelected={(view: View) =>
-                setStarlessView(view.isNull ? null : view)
-              }
+              currentView={starlessView}
+              onViewSelected={(view: View) => {
+                setStarlessView(view);
+                updateParameter("starlessViewId", view.id);
+              }}
               enabled={Boolean(targetView && !targetView.isNull)}
               stretchFactor={1}
             />
@@ -418,8 +432,7 @@ export function ScriptDialog({
               <NumericControl
                 value={parameters.binarizeThreshold}
                 onValueUpdated={(binarizeThreshold) => {
-                  setParameters({ ...parameters, binarizeThreshold });
-                  onParameterChange?.("binarizeThreshold", binarizeThreshold);
+                  updateParameter("binarizeThreshold", binarizeThreshold);
                 }}
                 minValue={0}
                 maxValue={1}
@@ -435,7 +448,10 @@ export function ScriptDialog({
             margin={5}
             titleCheckBox={true}
             checked={isClosingEnabled}
-            onCheck={(checked) => setIsClosingEnabled(checked)}
+            onCheck={(checked) => {
+              setIsClosingEnabled(checked)
+              updateParameter('closingEnabled', checked);
+            }}
           >
             <UIHorizontalSizer spacing={5}>
               <UILabel
@@ -449,8 +465,7 @@ export function ScriptDialog({
                 stepSize={2}
                 value={parameters.closingSize}
                 onValueUpdated={(closingSize) => {
-                  setParameters({ ...parameters, closingSize });
-                  onParameterChange?.("closingSize", closingSize);
+                  updateParameter("closingSize", closingSize);
                 }}
               />
               <UIStretch />
@@ -468,8 +483,7 @@ export function ScriptDialog({
                 stepSize={2}
                 value={parameters.closingDilationSize}
                 onValueUpdated={(closingDilationSize) => {
-                  setParameters({ ...parameters, closingDilationSize });
-                  onParameterChange?.(
+                  updateParameter(
                     "closingDilationSize",
                     closingDilationSize
                   );
@@ -488,8 +502,7 @@ export function ScriptDialog({
                 stepSize={2}
                 value={parameters.dilationSize}
                 onValueUpdated={(dilationSize) => {
-                  setParameters({ ...parameters, dilationSize });
-                  onParameterChange?.("dilationSize", dilationSize);
+                  updateParameter("dilationSize", dilationSize);
                 }}
               />
               <UIStretch />
@@ -505,8 +518,7 @@ export function ScriptDialog({
                 stepSize={2}
                 value={parameters.convolutionSize}
                 onValueUpdated={(convolutionSize) => {
-                  setParameters({ ...parameters, convolutionSize });
-                  onParameterChange?.("convolutionSize", convolutionSize);
+                  updateParameter("convolutionSize", convolutionSize);
                 }}
               />
               <UIStretch />
