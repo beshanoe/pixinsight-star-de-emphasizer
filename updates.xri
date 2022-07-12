@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xri version="1.0">
+   <description>
+      <p>
+        PixInsight Updates — AstroSwell&apos;s personal script repository
+     </p>
+   </description>
+   <platform os="all" arch="noarch" version="1.8.0:1.9.0">
+      <package fileName="StarDe-emphasizer.zip" sha1="7a4317a9fb1d9d0808fe855ce131fa7ceeff94c8" type="script" releaseDate="20210205">
+         <title>
+            Star De-emphasizer Script v0.2.1
+         </title>
+         <description>
+            <p>
+               This script uses the method of de-emphasizing stars suggested by Adam Block
+            </p>
+            <p>
+               https://pixinsight.com/forum/index.php?threads/star-de-emphasizer-script-adam-blocks-star-reduction-method.16034/
+            </p>
+            <p>
+               Copyright (c) 2021 Maxim Valenko @AstroSwell
+            </p>
+         </description>
+      </package>
+   </platform>
+</xri>
+<Signature developerId="Astroswell" timestamp="2022-07-12T10:04:46.241Z" encoding="Base64">QOPmrJYF1HbxuR5sm3xOoIkzqFtXxRKwNV2p465FOG2N1XZp4OCb8mxsDAyslPzNjqDYiRYkWT/fncVRZAPiBg==</Signature>
