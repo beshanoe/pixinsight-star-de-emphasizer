@@ -479,7 +479,7 @@ export function ScriptDialog({
               />
               <UISpinBox
                 minValue={3}
-                maxValue={11}
+                maxValue={25}
                 stepSize={2}
                 value={parameters.closingDilationSize}
                 onValueUpdated={(closingDilationSize) => {
@@ -498,7 +498,7 @@ export function ScriptDialog({
               <UILabel text="Size: " textAlignment={TextAlign_VertCenter} />
               <UISpinBox
                 minValue={3}
-                maxValue={11}
+                maxValue={25}
                 stepSize={2}
                 value={parameters.dilationSize}
                 onValueUpdated={(dilationSize) => {
