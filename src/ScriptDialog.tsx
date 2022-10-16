@@ -30,6 +30,7 @@ const SCRIPT_DESCRIPTION = `<b> ${SCRIPT_NAME}  v${version}</b> &mdash; This scr
 export const defaultParameters = {
   targetViewId: "",
   starlessViewId: "",
+  structuresViewId: "",
   structuresMinLayer: 1,
   structuresMaxLayer: 3,
   binarizeThreshold: 0.2,
@@ -86,6 +87,7 @@ export function ScriptDialog({
 
   const [targetView, setTargetView] = useState(new View());
   const [starlessView, setStarlessView] = useState(new View());
+  const [structuresView, setStructuresView] = useState(new View());
   const [rect, setRect] = useState<Rect>(new Rect());
 
   const [previewImages, setPreviewImages] = useState(
@@ -100,6 +102,7 @@ export function ScriptDialog({
 
   const targetImage = useMemo(() => targetView?.image, [targetView]);
   const starlessImage = useMemo(() => starlessView?.image, [starlessView]);
+  const structuresMapImage = useMemo(() => structuresView?.image, [structuresView]);
   const currentImage = useMemo(() => previewImages[currentStep], [
     currentStep,
     previewImages,
@@ -108,10 +111,12 @@ export function ScriptDialog({
   useEffect(() => {
     setTargetView((View as any).viewById(parameters.targetViewId)); // TODO remove any after updating typings
     setStarlessView((View as any).viewById(parameters.starlessViewId));
+    setStructuresView((View as any).viewById(parameters.structuresViewId));
   }, []);
 
   useEffect(() => {
     let original = previewImages.original;
+    let starless = previewImages.starless;
     if (targetImage) {
       const previewImage = new Image();
       previewImage.assign(targetImage);
@@ -119,12 +124,14 @@ export function ScriptDialog({
       original = previewImage;
       setPreviewImages({
         original,
-        starless: previewImages.starless,
+        starless: starless,
+        structures: previewImages.structures,
       });
       setCurrentStep("original");
     } else {
       setPreviewImages({
         starless: previewImages.starless,
+        structures: previewImages.structures,
       });
     }
 
@@ -135,13 +142,32 @@ export function ScriptDialog({
       setPreviewImages({
         original,
         starless: previewStarlessImage,
+        structures: previewImages.structures,
+      });
+	  starless = previewStarlessImage;
+    } else {
+      setPreviewImages({
+        original,
+        structures: previewImages.structures,
+      });
+    }
+	
+	if (structuresMapImage) {
+      const previewStructuresImage = new Image();
+      previewStructuresImage.assign(structuresMapImage);
+      previewStructuresImage.cropTo(rect);
+      setPreviewImages({
+        original,
+        starless: starless,
+        structures: previewStructuresImage,
       });
     } else {
       setPreviewImages({
         original,
+        starless: starless,
       });
     }
-  }, [rect, targetImage, starlessImage]);
+  }, [rect, targetImage, starlessImage, structuresMapImage]);
 
   function updateStructuresSettings(updatedParameters: Partial<Parameters>) {
     if (updatedParameters.structuresMinLayer) {
@@ -158,16 +184,18 @@ export function ScriptDialog({
     onParameterChange?.("structuresMaxLayer", newParameters.structuresMaxLayer);
   }
 
-  function process(image: Image, starlessImage: Image) {
+  function process(image: Image, starlessImage: Image, structuresMapImage?: Image) {
     const lumImage = new Image();
 
     console.log("Get Luminance...");
     image.getLuminance(lumImage);
 
     console.log("MultiscaleLinearTransform...");
-    const structuresImage = structures(lumImage, {
-      minLayer: parameters.structuresMinLayer,
-      maxLayer: parameters.structuresMaxLayer,
+    const structuresImage = structuresMapImage && structuresView && !structuresView.isNull
+		? structuresMapImage
+		: structures(lumImage, {
+		  minLayer: parameters.structuresMinLayer,
+		  maxLayer: parameters.structuresMaxLayer,
     });
 
     console.log("Binarize...");
@@ -223,6 +251,7 @@ export function ScriptDialog({
 
   function onProcessPreviewClick() {
     if (!previewImages.original || !previewImages.starless) {
+      console.error(previewImages.starless);
       return;
     }
 
@@ -238,7 +267,7 @@ export function ScriptDialog({
         convolutedImage,
         halosImage,
         finalImage,
-      } = process(previewImages.original, previewImages.starless);
+      } = process(previewImages.original, previewImages.starless, previewImages.structures);
 
       setPreviewImages({
         ...previewImages,
@@ -269,7 +298,7 @@ export function ScriptDialog({
     setIsControlsEnabled(false);
 
     try {
-      const { finalImage } = process(targetImage, starlessImage);
+      const { finalImage } = process(targetImage, starlessImage, structuresMapImage);
 
       targetView?.beginProcess();
       targetView?.image.apply(finalImage);
@@ -383,6 +412,23 @@ export function ScriptDialog({
           </UIHorizontalSizer>
 
           <UIGroupBox title="Structures" spacing={5} margin={5}>
+            <UIHorizontalSizer>
+              <UILabel
+                text="View: "
+                textAlignment={TextAlign_VertCenter}
+                minWidth={80}
+              />
+              <UIViewList
+                currentView={structuresView}
+                onViewSelected={(view: View) => {
+                  setStructuresView(view);
+                  updateParameter("structuresViewId", view.id);
+                }}
+                enabled={Boolean(targetView && !targetView.isNull)}
+                stretchFactor={1}
+              />
+            </UIHorizontalSizer>
+
             <UIHorizontalSizer>
               <UILabel
                 minWidth={60}
