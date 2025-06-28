@@ -5,7 +5,7 @@
         PixInsight Updates — AstroSwell&apos;s personal script repository
      </p>
    </description>
-   <platform os="all" arch="noarch" version="1.8.0:1.9.0">
+   <platform os="all" arch="noarch" version="1.8.0:1.9.9">
       <package fileName="StarDe-emphasizer.zip" sha1="7a4317a9fb1d9d0808fe855ce131fa7ceeff94c8" type="script" releaseDate="20210205">
          <title>
             Star De-emphasizer Script v0.2.1
