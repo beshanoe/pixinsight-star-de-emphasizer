@@ -1,11 +1,4 @@
-import {
-  Align_Center,
-  FrameStyle_Box,
-  FrameStyle_Styled,
-  StdCursor_ClosedHand,
-  StdCursor_Cross,
-  TextAlign_Center,
-} from "@pixinsight/core";
+import { FrameStyle_Box, TextAlign_Center } from "@pixinscript/core";
 import {
   UIControl,
   UIFrame,
@@ -13,7 +6,7 @@ import {
   UILabel,
   UIStretch,
   UIVerticalSizer,
-} from "@pixinsight/ui";
+} from "@pixinscript/ui";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 export type ReadoutData = [
@@ -38,13 +31,25 @@ export function ImagePreview({
   title?: string;
   active?: boolean;
   showReadout?: boolean;
-} & React.ComponentProps<typeof UIFrame>) {
+  onMousePress?: (
+    x: number,
+    y: number,
+    button: number,
+    state: any,
+    mods: any,
+    readoutData: ReadoutData
+  ) => void;
+} & Omit<React.ComponentProps<typeof UIFrame>, "onMousePress">) {
   const controlRef = useRef<Control>(null);
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const [cross, setCross] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [readout, setReadout] = useState<ReadoutData>();
   const [readoutText, setReadoutText] = useState("");
-  const [bmp, offsetX, offsetY, channelsCount] = useMemo(() => {
+  const [bmp, offsetX, offsetY, channelsCount = 3] = useMemo(() => {
+    if (!image) {
+      return [];
+    }
+
     const ratio = image?.width / image?.height;
     const [sw, sh] = [size.w, size.h];
 
@@ -80,7 +85,7 @@ export function ImagePreview({
   }, [size, image, cross]);
 
   function onPaint() {
-    if (!controlRef.current || !bmp) {
+    if (!controlRef.current || !bmp || offsetX == null || offsetY == null) {
       return;
     }
     const control = controlRef.current;
@@ -102,7 +107,7 @@ export function ImagePreview({
   }
 
   function onMouseMove(x: number, y: number) {
-    if (!showReadout) {
+    if (!showReadout || !image || !bmp || offsetX == null || offsetY == null) {
       return;
     }
     setCross({ x, y });
@@ -134,7 +139,7 @@ export function ImagePreview({
   }
 
   function onMousePressInternal(...args: any[]) {
-    onMousePress?.(...args, readout);
+    (onMousePress as any)?.(...args, readout);
   }
 
   return (

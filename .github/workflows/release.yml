@@ -12,12 +12,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
-      - uses: actions/setup-node@v1.4.4
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
       - name: Install dependencies
-        run: yarn
-      - name: Build project # This would actually build your project, using zip for an example artifact
-        run: yarn build
+        run: npm ci
+      - name: Build project
+        run: npm run build:ci
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1

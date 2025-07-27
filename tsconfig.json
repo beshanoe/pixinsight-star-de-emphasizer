@@ -1,19 +1,7 @@
 {
+  "extends": "@pixinscript/typescript-config/base.json",
   "compilerOptions": {
-    "moduleResolution": "node",
-    "module": "esnext",
-    "target": "es5",
-    "jsx": "react",
-    "noEmitOnError": true,
-    "sourceMap": false,
-    "strict": true,
-    "strictNullChecks": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "lib": ["esnext"],
-    "types": [
-      "@pixinsight/core/types/globals",
-      "@pixinsight/core/types/processes"
-    ]
-  }
+    "declaration": false
+  },
+  "include": ["src/**/*"]
 }

@@ -1,5 +1,5 @@
-import { FrameStyle_Box, TextAlign_VertCenter } from "@pixinsight/core";
-import { useDialog } from "@pixinsight/react";
+import { FrameStyle_Box, TextAlign_VertCenter } from "@pixinscript/core";
+import { useDialog } from "@pixinscript/react";
 import {
   UIControl,
   UIGroupBox,
@@ -11,7 +11,7 @@ import {
   UIToolButton,
   UIVerticalSizer,
   UIViewList,
-} from "@pixinsight/ui";
+} from "@pixinscript/ui";
 import React, { useEffect, useMemo, useState } from "react";
 import { version } from "../package.json";
 import { ImagePreview, ReadoutData } from "./ImagePreview";
@@ -324,6 +324,9 @@ export function ScriptDialog({
   }
 
   function saveAsView(image?: Image) {
+    if (!image) {
+      return;
+    }
     const iw = new ImageWindow(
       image?.width,
       image?.width,

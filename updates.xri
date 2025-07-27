@@ -6,9 +6,9 @@
      </p>
    </description>
    <platform os="all" arch="noarch" version="1.8.0:1.9.9">
-      <package fileName="StarDe-emphasizer.zip" sha1="7a4317a9fb1d9d0808fe855ce131fa7ceeff94c8" type="script" releaseDate="20210205">
+      <package fileName="StarDe-emphasizer.zip" sha1="0327f7f02e5b7618c856c59eb1e14ad803dc7355" type="script" releaseDate="20250727">
          <title>
-            Star De-emphasizer Script v0.2.1
+            Star De-emphasizer Script v0.2.2
          </title>
          <description>
             <p>
@@ -24,4 +24,4 @@
       </package>
    </platform>
 </xri>
-<Signature developerId="Astroswell" timestamp="2022-07-12T10:04:46.241Z" encoding="Base64">QOPmrJYF1HbxuR5sm3xOoIkzqFtXxRKwNV2p465FOG2N1XZp4OCb8mxsDAyslPzNjqDYiRYkWT/fncVRZAPiBg==</Signature>
+<Signature developerId="Astroswell" timestamp="2025-07-27T14:12:44.572Z" encoding="Base64">OUU6OPKrYp/kbySowY+yxinX+wHUl2MTuVYooOXCR+hjg7r9xeK1xfp7jVaGvg9vJJ8sj1PWanF2ZFmqWCjtCg==</Signature>
